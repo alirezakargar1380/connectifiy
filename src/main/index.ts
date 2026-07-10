@@ -32,9 +32,17 @@ function getDns(interfaceName: string): Promise<string[]> {
 function createWindow(): void {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 900,
-    height: 670,
+    width: 240,
+    height: 200,
     show: false,
+    frame: false,
+    movable: true,
+    // minimizable: false,
+    // maximizable: false,
+    // closable: false,
+    transparent: true,
+    // resizable: false,
+    fullscreenable: false,
     autoHideMenuBar: true,
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
@@ -100,10 +108,16 @@ app.whenReady().then(() => {
     const wifi = await getDns("Wi-Fi");
     const ethernet = await getDns("vEthernet (Default Switch)");
 
-    return {
-      wifi,
-      ethernet,
-    };
+    return [
+      {
+        name: "wifi",
+        dns: wifi,
+      },
+      {
+        name: "ethernet",
+        dns: ethernet,
+      }
+    ];
   })
   ipcMain.handle('proxy-server', () => {
     return new Promise((resolve, reject) => {
