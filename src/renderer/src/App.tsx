@@ -25,6 +25,7 @@ function App(): React.JSX.Element {
         <div className="action">
           <a target="_blank" rel="noreferrer" onClick={() => {
             window.api.getProxy().then((data) => console.log("proxy: ", data));
+            window.api.getProxyServer().then((data) => console.log("getProxyServer: ", data));
           }}>
             Send IPC
           </a>

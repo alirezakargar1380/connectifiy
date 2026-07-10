@@ -4,7 +4,8 @@ export {};
 declare global {
   interface Window {
     api: {
-      getProxy(): Promise<string>;
+      getProxy(): Promise<boolean>;
+      getProxyServer(): Promise<string>;
     };
   }
 }

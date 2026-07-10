@@ -71,6 +71,25 @@ app.whenReady().then(() => {
       );
     });
   })
+  ipcMain.handle('proxy-server', () => {
+    return new Promise((resolve, reject) => {
+      execFile(
+        "reg",
+        [
+          "query",
+          "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings",
+          "/v",
+          "ProxyServer",
+        ],
+        (err, stdout) => {
+          if (err) return reject(err);
+
+          let status: string = stdout.split(" ")[stdout.split(" ").length - 1];
+          resolve(status);
+        }
+      );
+    });
+  })
 
   createWindow()
 
