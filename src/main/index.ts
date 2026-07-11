@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, screen } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -29,27 +29,42 @@ function getDns(interfaceName: string): Promise<string[]> {
   });
 }
 
+let mainWindow: BrowserWindow
+
 function createWindow(): void {
+  const { width: screenWidth } = screen.getPrimaryDisplay().workAreaSize;
+  const windowWidth = 240;
+  const windowHeight = 400;
+
   // Create the browser window.
-  const mainWindow = new BrowserWindow({
-    width: 240,
-    height: 200,
+  mainWindow = new BrowserWindow({
+    width: windowWidth,
+    height: windowHeight,
+    x: screenWidth - windowWidth,  // right edge
     show: false,
     frame: false,
     movable: true,
+    y: 0,
     // minimizable: false,
     // maximizable: false,
     // closable: false,
-    transparent: true,
+    transparent: true, // 👈 false
+    // backgroundColor: '#141414', // 👈 SOLID color, NOT transparent!
+    // alwaysOnTop: false,
     // resizable: false,
     fullscreenable: false,
     autoHideMenuBar: true,
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false
+      sandbox: false,
+      // nodeIntegration: true,
+      // contextIsolation: false,
     }
   })
+
+  // IMPORTANT: Enable mouse events
+  mainWindow.setIgnoreMouseEvents(false); // 👈 Ensure this is false
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
@@ -85,6 +100,8 @@ app.whenReady().then(() => {
 
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
+  ipcMain.on('clickable', () => mainWindow.setIgnoreMouseEvents(true, { forward: true }))
+  ipcMain.on('not-clickable', () => mainWindow.setIgnoreMouseEvents(false))
   ipcMain.handle('proxy', () => {
     return new Promise((resolve, reject) => {
       execFile(

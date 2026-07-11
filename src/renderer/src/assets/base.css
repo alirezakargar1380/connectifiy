@@ -68,4 +68,5 @@ body {
 
 .widget {
   -webkit-app-region: drag;
+  /* user-select: none; */
 }
