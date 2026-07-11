@@ -161,7 +161,7 @@ function App(): React.JSX.Element {
         }}
         sx={{
           // width: 100, 
-          bgcolor: '#c7c7c7',
+          bgcolor: '#ebebeb',
           textAlign: 'right', pr: 1, py: 0.25,
           display: maximize === 'open' ? 'flex' : 'none',
           justifyContent: 'end'
@@ -186,8 +186,9 @@ function App(): React.JSX.Element {
       </Box>
       <Box sx={{
         padding: 2,
-        bgcolor: '#141414e0',
-        borderRadius: 4,
+        bgcolor: '#0c0c0c',
+        borderBottomRightRadius: 16,
+        borderBottomLeftRadius: 16,
         clipPath: (maximize === 'open') ? 'circle(150% at 210px 30px);' : 'circle(8% at 208px 30px);',
         // ...(notif?.show === false) && {
         //   clipPath: 'circle(150% at 210px 30px);',
