@@ -30,12 +30,12 @@ body {
 
 @keyframes green-loop {
   0% {
-    box-shadow: 0px 0px 17px 1px #00ff2a;
+    box-shadow: 0px 0px 17px 1px #0ccf64;
     /* blur 0 */
   }
 
   100% {
-    box-shadow: 0px 0px 1px 1px #00ff2a;
+    box-shadow: 0px 0px 1px 1px #0ccf64;
     /* blur 20px + spread 6px */
   }
 }
@@ -66,12 +66,12 @@ body {
 
 @keyframes blue-loop {
   0% {
-    box-shadow: 0px 0px 17px 1px #47c5ff;
+    box-shadow: 0px 0px 17px 1px #1aa4e4;
     /* blur 0 */
   }
 
   100% {
-    box-shadow: 0px 0px 1px 1px #47c5ff;
+    box-shadow: 0px 0px 1px 1px #1aa4e4;
     /* blur 20px + spread 6px */
   }
 }

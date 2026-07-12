@@ -16,8 +16,8 @@ interface Notification {
 function App(): React.JSX.Element {
   const colors = {
     white: "#000",
-    green: "#00ff2a",
-    blue: "#47c5ff",
+    green: "#0ccf64",
+    blue: "#1aa4e4",
     red: '#ff242f'
   }
   // const ipcHandle = (): void => window.electron.ipcRenderer.send('ping')
@@ -67,30 +67,6 @@ function App(): React.JSX.Element {
     return () => clearInterval(intervalId);
 
   }, []);
-
-  // Listen for monitoring updates
-  // useEffect(() => {
-  //   // if (autoCheck) {
-  //     const handleStatusUpdate = (data: { connected: boolean; details: any }) => {
-  //       console.log("data", data)
-  //       // setStatus(prev => ({
-  //       //   ...prev,
-  //       //   isConnected: data.connected,
-  //       //   latency: data.details?.details?.latency || null,
-  //       //   hasVPN: data.details?.details?.vpn?.hasVPN || false
-  //       // }));
-  //     };
-
-  //     window.api.onInternetStatus(handleStatusUpdate);
-
-  //     // Start monitoring
-  //     window.api.startMonitoring(5000);
-
-  //     return () => {
-  //       // window.api.stopMonitoring();
-  //     };
-  //   // }
-  // }, []);
 
   useEffect(() => {
     const getDns = async () => {
@@ -158,7 +134,7 @@ function App(): React.JSX.Element {
 
   return (
     <Box sx={{
-      position: 'relative', width: 290, height: 563
+      width: 290, height: 1
       // pointerEvents: 'none',
       // position: 'absolute',
       // overflow: 'hidden'
@@ -183,16 +159,14 @@ function App(): React.JSX.Element {
           // height: 400,
         }}>
         <Box className="nwidget"
-          sx={{ width: 'fit-content' }}
+          sx={{ width: 16, height: 16, bgcolor: '#F5BD4F', borderRadius: 24 }}
           onClick={() => {
-            console.log('asdsdfa >>>>')
             setMaximize(maximize === 'close' ? 'open' : 'close')
-          }}>
-          ⭕
-        </Box>
+          }}
+        ></Box>
         <Box
           className="nwidget"
-          sx={{ width: 16, height: 16, bgcolor: '#58A942', borderRadius: 24 }}
+          sx={{ width: 16, height: 16, bgcolor: '#EE6A5F', borderRadius: 24, ml: 0.75 }}
           onClick={() => window.electron.ipcRenderer.send('ping')}
         />
       </Box>
@@ -201,7 +175,7 @@ function App(): React.JSX.Element {
         bgcolor: '#fffffff1',
         borderBottomRightRadius: '24px',
         borderBottomLeftRadius: '24px',
-        clipPath: (maximize === 'open') ? 'circle(150% at 210px 30px);' : 'circle(5% at 250px 30px);',
+        clipPath: (maximize === 'open') ? 'circle(150% at 210px 30px);' : 'circle(4% at 256px 35.5px);',
         // ...(notif?.show === false) && {
         //   clipPath: 'circle(150% at 210px 30px);',
         // },
@@ -227,14 +201,14 @@ function App(): React.JSX.Element {
           }}
           sx={{
             color: "#1f1f1f",
-            px: 2,
+            px: 1,
             textAlign: 'center', py: 0.5,
             borderRadius: 4, display: 'flex', mb: 1,
             justifyContent: 'space-between',
             alignItems: 'center'
           }}
         >
-          <Box sx={{ fontSize: 12, fontFamily: 'ur-medium' }}>CONNECTION STATUS:</Box>
+          <Box sx={{ fontSize: 20, fontFamily: 'ur-medium' }}>Connection Status:</Box>
           <Box
             onMouseEnter={() => {
               if (maximize !== "open")
@@ -245,8 +219,8 @@ function App(): React.JSX.Element {
                 window.electron.ipcRenderer.send('clickable')
             }}
             sx={{
-              width: '16px',
-              height: '16px',
+              width: '20px',
+              height: '20px',
               // bgcolor: '#00ff2a',
               // bgcolor: '#00ff2a',
               bgcolor: colors[internetStatus],
@@ -316,16 +290,27 @@ function App(): React.JSX.Element {
         </Box>
         {/* ==================== DNS ==================== */}
 
-        <Box sx={{ width: 1, textAlign: 'center', bgcolor: '#2e2e2e', mt: 2 }}>VPN</Box>
-        <Stack direction={'row'} sx={{ justifyContent: 'space-between' }}>
-          <Box>Status:</Box>
-          <Box>
-            {(result?.hasVPN) ? <Label variant='filled' color='success'>ON</Label> : <Label variant='filled' color='error'>OFF</Label>}
+        {/* ==================== VPN ==================== */}
+        <Box sx={{ bgcolor: '#fff', p: '16px', borderRadius: '16px', mt: 2 }}>
+          <Box sx={{ width: 1, textAlign: 'left', mb: 0.5, color: 'black', fontFamily: 'ur-medium', fontSize: '16px', display: 'flex', alignItems: 'center', gap: 1 }}>
+            <SvgColor src={'/src/assets/icons/vpn.svg'} sx={{ width: 40, height: 40, }} />
+            <Box>VPN</Box>
           </Box>
-        </Stack>
-        {result?.vpnInterfaces.map((inter: string) => (
-          <Label variant='soft' color='info' key={inter}>{inter}</Label>
-        ))}
+
+          <Stack direction={'row'} spacing={2} sx={{ alignItems: 'center', mt: '16px', justifyContent: 'space-between' }}>
+            <Box sx={{ fontFamily: 'ur-regular', color: '#3d3d3db0' }}>VPN Status :</Box>
+            <Box sx={{ display: 'flex' }}>
+              {(result?.hasVPN) ? <Label variant='soft' color='success' sx={{ borderRadius: 24 }}>Connected</Label> : <Label variant='soft' color='error' sx={{ borderRadius: 24 }}>Disconnect</Label>}
+            </Box>
+          </Stack>
+          <Stack direction={'row'} spacing={2} sx={{ alignItems: 'center', mt: '16px', justifyContent: 'space-between' }}>
+            {result?.vpnInterfaces.map((inter: string) => (
+              <Label variant='soft' color='info' key={inter}>{inter}</Label>
+            ))}
+          </Stack>
+        </Box>
+        {/* ==================== VPN ==================== */}
+
         {/* <div className="action">
         <a target="_blank" rel="noreferrer" onClick={() => {
           window.api.getProxy().then((data) => {
@@ -341,7 +326,7 @@ function App(): React.JSX.Element {
       </div> */}
         {/* <Versions /> */}
       </ Box>
-    </Box>
+    </Box >
   )
 }
 
