@@ -1,8 +1,15 @@
-# connectivity
+# Connectifiy
 
-An Electron application with React and TypeScript
+An Electron application That monitor the:
+- DNS
+- PROXY
+- VPN 
+that you set on your network
 
-## Recommended IDE Setup
+## AT THE END 
+Special Thanks to ``Hadi Jafari`` The Ui Designer of this Project
+
+<!-- ## Recommended IDE Setup
 
 - [VSCode](https://code.visualstudio.com/) + [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint) + [Prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode)
 
@@ -31,4 +38,4 @@ $ npm run build:mac
 
 # For Linux
 $ npm run build:linux
-```
+``` -->
