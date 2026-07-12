@@ -66,7 +66,7 @@ export const StyledLabel = styled(Box)(({
   };
 
   return {
-    height: 16,
+    height: 20,
     minWidth: 24,
     lineHeight: 0,
     borderRadius: 6,
@@ -76,9 +76,11 @@ export const StyledLabel = styled(Box)(({
     display: 'inline-flex',
     justifyContent: 'center',
     textTransform: 'capitalize',
+    fontFamily: 'ur-regular',
     padding: theme.spacing(0, 0.75),
-    fontSize: theme.typography.pxToRem(10),
-    fontWeight: theme.typography.fontWeightBold,
+    fontSize: '10px',
+    // fontWeight: theme.typography.fontWeightBold,
+    letterSpacing: '0.5px',
     transition: theme.transitions.create('all', {
       duration: theme.transitions.duration.shorter,
     }),

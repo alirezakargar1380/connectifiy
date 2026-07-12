@@ -87,8 +87,8 @@ let mainWindow: BrowserWindow
 
 function createWindow(): void {
   const { width: screenWidth } = screen.getPrimaryDisplay().workAreaSize;
-  const windowWidth = 240;
-  const windowHeight = 400;
+  const windowWidth = 290;
+  const windowHeight = 563;
 
   // Create the browser window.
   mainWindow = new BrowserWindow({

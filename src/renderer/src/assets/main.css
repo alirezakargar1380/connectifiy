@@ -1,5 +1,20 @@
 @import './base.css';
 
+/* ==================== FONTS =================== */
+@font-face {
+  font-family: 'ur-regular';
+  /* font-weight: 700;
+  font-style: normal; */
+  src: url('fonts/Urbanist-Regular.ttf') format('opentype');
+}
+
+@font-face {
+  font-family: 'ur-medium';
+  /* font-weight: 700;
+  font-style: normal; */
+  src: url('fonts/Urbanist-Medium.ttf') format('opentype');
+}
+
 body {
   /* padding: 24px; */
   /* display: flex;
@@ -27,12 +42,12 @@ body {
 
 @keyframes white-loop {
   0% {
-    box-shadow: 0px 0px 17px 1px #fff;
+    box-shadow: 0px 0px 17px 1px #000;
     /* blur 0 */
   }
 
   100% {
-    box-shadow: 0px 0px 1px 1px #fff;
+    box-shadow: 0px 0px 1px 1px #000;
     /* blur 20px + spread 6px */
   }
 }

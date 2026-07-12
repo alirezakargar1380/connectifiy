@@ -4,6 +4,9 @@ import Label from './components/label';
 // import electronLogo from './assets/electron.svg'
 import Stack from '@mui/material/Stack';
 import { ConnectionInfo } from 'src/utils/internet';
+import SvgColor from './components/svg-color';
+
+import computerProtection from '@renderer/assets/icons/computer.svg'
 
 interface Notification {
   show: boolean
@@ -12,7 +15,7 @@ interface Notification {
 
 function App(): React.JSX.Element {
   const colors = {
-    white: "#fff",
+    white: "#000",
     green: "#00ff2a",
     blue: "#47c5ff",
     red: '#ff242f'
@@ -58,11 +61,11 @@ function App(): React.JSX.Element {
   };
 
   useEffect(() => {
+    checkConnection();
 
     const intervalId = setInterval(checkConnection, 8000);
     return () => clearInterval(intervalId);
 
-    checkConnection();
   }, []);
 
   // Listen for monitoring updates
@@ -97,10 +100,10 @@ function App(): React.JSX.Element {
         // console.log("proxy: ", data)
         if (data === true || data === false) setEnableProxy(data)
         if (enableProxy === false && data === true) {
-          setNotif({
-            show: false,
-            text: 'PAY ATTENTION: you set a proxy on youre netword!'
-          })
+          // setNotif({
+          //   show: false,
+          //   text: 'PAY ATTENTION: you set a proxy on youre netword!'
+          // })
         }
       });
 
@@ -138,6 +141,13 @@ function App(): React.JSX.Element {
           show: true
         })
       }, 6000)
+    } else if (notif?.show === false) {
+      setTimeout(() => {
+        setNotif({
+          ...notif,
+          show: true
+        })
+      }, 6000)
     }
   }, [notif])
 
@@ -148,7 +158,7 @@ function App(): React.JSX.Element {
 
   return (
     <Box sx={{
-      position: 'relative', width: 240, height: 400
+      position: 'relative', width: 290, height: 563
       // pointerEvents: 'none',
       // position: 'absolute',
       // overflow: 'hidden'
@@ -161,10 +171,13 @@ function App(): React.JSX.Element {
         }}
         sx={{
           // width: 100, 
-          bgcolor: '#ebebeb',
-          textAlign: 'right', pr: 1, py: 0.25,
+          borderTopRightRadius: '24px',
+          borderTopLeftRadius: '24px',
+          bgcolor: '#ffffff',
+          textAlign: 'right', px: 3, py: 1,
           display: maximize === 'open' ? 'flex' : 'none',
-          justifyContent: 'end'
+          justifyContent: 'end',
+          alignItems: 'center'
           // pointerEvents: maximize === 'open' ? 'auto' : 'none',
           // width: 240,
           // height: 400,
@@ -179,17 +192,16 @@ function App(): React.JSX.Element {
         </Box>
         <Box
           className="nwidget"
-          sx={{ width: 'fit-content', ml: 0.5 }}
-          onClick={() => window.electron.ipcRenderer.send('ping')}>
-          ❌
-        </Box>
+          sx={{ width: 16, height: 16, bgcolor: '#58A942', borderRadius: 24 }}
+          onClick={() => window.electron.ipcRenderer.send('ping')}
+        />
       </Box>
       <Box sx={{
-        padding: 2,
-        bgcolor: '#0c0c0c',
-        borderBottomRightRadius: 16,
-        borderBottomLeftRadius: 16,
-        clipPath: (maximize === 'open') ? 'circle(150% at 210px 30px);' : 'circle(8% at 208px 30px);',
+        padding: '16px',
+        bgcolor: '#fffffff1',
+        borderBottomRightRadius: '24px',
+        borderBottomLeftRadius: '24px',
+        clipPath: (maximize === 'open') ? 'circle(150% at 210px 30px);' : 'circle(5% at 250px 30px);',
         // ...(notif?.show === false) && {
         //   clipPath: 'circle(150% at 210px 30px);',
         // },
@@ -214,15 +226,15 @@ function App(): React.JSX.Element {
             setMaximize(newStatus)
           }}
           sx={{
-            bgcolor: "#1f1f1f",
-            pl: 2, pr: 1,
+            color: "#1f1f1f",
+            px: 2,
             textAlign: 'center', py: 0.5,
             borderRadius: 4, display: 'flex', mb: 1,
             justifyContent: 'space-between',
             alignItems: 'center'
           }}
         >
-          <Box sx={{ fontSize: 12 }}>CONNECTION STATUS:</Box>
+          <Box sx={{ fontSize: 12, fontFamily: 'ur-medium' }}>CONNECTION STATUS:</Box>
           <Box
             onMouseEnter={() => {
               if (maximize !== "open")
@@ -253,32 +265,57 @@ function App(): React.JSX.Element {
         {notif?.show === false && (
           <Box sx={{ bgcolor: '#ffa600', p: 0.5, fontSize: 12, color: 'black' }}>{notif?.text}</Box>
         )}
-        <Box sx={{ width: 1, textAlign: 'center', bgcolor: '#2e2e2e', mt: 2, mb: 0.5 }}>PROXY</Box>
-        <Stack direction={'column'} sx={{ alignItems: 'center', justifyContent: 'start', width: 1 }}>
-          <Stack direction={'row'} sx={{ width: 1, justifyContent: 'space-between', alignItems: 'center' }}>
-            <Box sx={{ fontSize: 12 }}>Proxy Staus: </Box>
-            <Label variant='filled' sx={{ borderRadius: 6, px: 1.2, py: 0 }} color={enableProxy ? 'success' : 'error'}>{enableProxy ? 'on' : 'off'}</Label>
-          </Stack>
-          {(enableProxy === true) && (
-            <Stack direction={'row'} sx={{ width: 1, justifyContent: 'space-between', alignItems: 'center' }}>
-              <Box sx={{ fontSize: 12 }}>Proxy Server: </Box>
-              <Box sx={{ fontSize: 12 }}>{proxyServer}</Box>
-            </Stack>
-          )}
-        </Stack>
-        <Box sx={{ width: 1, textAlign: 'center', bgcolor: '#2e2e2e', mt: 2 }}>DNS</Box>
-        {dns.map((item, index) => (
-          <Stack key={index} direction={'row'} sx={{ justifyContent: 'space-between', alignItems: 'center', width: 1 }}>
-            <Box sx={{ fontSize: 16 }}>{item.name + ':'}</Box>
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              {item.dns.length === 0 && (<Label variant='filled' color='error'>not set</Label>)}
-              {item.dns.map((dns, i) => (
-                <Box key={i} sx={{ fontSize: 12 }}>{dns}</Box>
-              ))}
-              <Box sx={{ fontSize: 12 }}>❌</Box>
+
+        {/* ==================== PROXY ==================== */}
+        <Box sx={{ bgcolor: '#fff', p: '16px', borderRadius: '16px' }}>
+          <Box sx={{ width: 1, textAlign: 'left', mb: 0.5, color: 'black', fontFamily: 'ur-medium', fontSize: '16px', display: 'flex', alignItems: 'center', gap: 1 }}>
+            <SvgColor src={'/src/assets/icons/computer.svg'} sx={{ width: 40, height: 40, }} />
+            <Box>Proxy</Box>
+          </Box>
+
+          <Stack direction={'row'} spacing={2} sx={{ alignItems: 'center', mt: '16px' }}>
+            <Box sx={{ fontFamily: 'ur-regular', color: '#3d3d3db0' }}>Proxy Status :</Box>
+            <Box sx={{ display: 'flex' }}>
+              <Label variant='soft' sx={{ borderRadius: 6, px: 1.2, py: 0 }} color={enableProxy ? 'success' : 'error'}>{enableProxy ? 'on' : 'disable'}</Label>
             </Box>
           </Stack>
-        ))}
+
+          {enableProxy && (
+            <Stack direction={'row'} spacing={2} sx={{ alignItems: 'center', mt: '8px' }}>
+              <Box sx={{ fontFamily: 'ur-regular', color: '#3d3d3db0' }}>Proxy Server :</Box>
+              <Box sx={{ display: 'flex', color: 'black', fontSize: '16px', fontFamily: 'ur-regular' }}>
+                {proxyServer}
+              </Box>
+            </Stack>
+          )}
+        </Box>
+        {/* ==================== PROXY ==================== */}
+
+
+        {/* ==================== DNS ==================== */}
+        <Box sx={{ bgcolor: '#fff', p: '16px', borderRadius: '16px', mt: 2 }}>
+          <Box sx={{ width: 1, textAlign: 'left', mb: 0.5, color: 'black', fontFamily: 'ur-medium', fontSize: '16px', display: 'flex', alignItems: 'center', gap: 1 }}>
+            <SvgColor src={'/src/assets/icons/internet.svg'} sx={{ width: 40, height: 40, }} />
+            <Box>DNS</Box>
+          </Box>
+
+          <Stack direction={'column'} spacing={2} sx={{ alignItems: 'center', mt: '16px' }}>
+            {dns.map((item, index) => (
+              <Stack key={index} direction={'row'} sx={{ justifyContent: 'space-between', alignItems: 'center', width: 1 }}>
+                <Box sx={{ fontSize: 16, fontFamily: 'ur-medium', color: '#3d3d3db0' }}>{item.name + ':'}</Box>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  {item.dns.length === 0 && (<Label variant='soft' color='default' sx={{ borderRadius: 24, px: 1 }}>not set</Label>)}
+                  {item.dns.map((dns, i) => (
+                    <Label variant='soft' color='success' sx={{ borderRadius: 24, px: 1 }}>{dns}</Label>
+                  ))}
+                  {/* <Box sx={{ fontSize: 12 }}>❌</Box> */}
+                </Box>
+              </Stack>
+            ))}
+          </Stack>
+        </Box>
+        {/* ==================== DNS ==================== */}
+
         <Box sx={{ width: 1, textAlign: 'center', bgcolor: '#2e2e2e', mt: 2 }}>VPN</Box>
         <Stack direction={'row'} sx={{ justifyContent: 'space-between' }}>
           <Box>Status:</Box>
