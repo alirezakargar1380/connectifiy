@@ -3,6 +3,10 @@ import dns from 'dns';
 import { exec } from 'child_process';
 import os from 'os';
 import { promisify } from 'util';
+// import fetch from 'node-fetch';
+import { fetch, ProxyAgent } from 'undici';
+import { HttpsProxyAgent } from 'https-proxy-agent';
+import { execFile } from 'child_process';
 
 const execPromise = promisify(exec);
 const dnsResolvePromise = promisify(dns.resolve);
@@ -75,6 +79,7 @@ export interface InternetCheckerOptions {
     testUrls?: string[];
     dnsServers?: string[];
     verbose?: boolean;
+    proxy?: string;
 }
 
 export class InternetConnectionChecker {
@@ -82,6 +87,7 @@ export class InternetConnectionChecker {
     private testUrls: string[];
     private dnsServers: string[];
     private verbose: boolean;
+    private proxy: string;
 
     constructor(options: InternetCheckerOptions = {}) {
         this.timeout = options.timeout || 5000;
@@ -94,7 +100,64 @@ export class InternetConnectionChecker {
         ];
         this.dnsServers = options.dnsServers || ['8.8.8.8', '1.1.1.1', '9.9.9.9'];
         this.verbose = options.verbose || false;
+        this.proxy = '';
     }
+
+
+
+    /**
+     * Get Enable Proxy
+     */
+    async checkEnableProxy(): Promise<boolean> {
+        return new Promise((resolve, reject) => {
+            execFile(
+                "reg",
+                [
+                    "query",
+                    "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings",
+                    "/v",
+                    "ProxyEnable",
+                ],
+                (err, stdout) => {
+                    if (err) return reject(err);
+
+                    let status: boolean = stdout.split(" ")[stdout.split(" ").length - 1].includes("0x1") ? true : false;
+                    resolve(status);
+                }
+            );
+        });
+    }
+
+
+    /**
+     * Get Proxy Address
+     */
+    async getProxyAddress(): Promise<string | null> {
+        return new Promise((resolve, reject) => {
+            execFile(
+                "reg",
+                [
+                    "query",
+                    "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings",
+                    "/v",
+                    "ProxyServer",
+                ],
+                (err, stdout) => {
+                    if (err) return reject(err);
+
+                    let status: string = stdout.split(" ")[stdout.split(" ").length - 1];
+                    // This regex matches IP:port patterns (both IPv4 and hostname:port)
+                    const proxyMatch = status.match(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:\d+)/);
+                    // Or if you want to match both IP and hostname:
+                    // const proxyMatch = status.match(/([\w.-]+:\d+)/);
+
+                    const proxyAddress = proxyMatch ? proxyMatch[1] : null;
+                    resolve(proxyAddress);
+                }
+            );
+        });
+    }
+
 
     /**
      * Check internet via HTTP requests
@@ -106,13 +169,23 @@ export class InternetConnectionChecker {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
+                console.log('this is proxy server:', await this.getProxyAddress())
+                const proxyAddress: string | null = await this.getProxyAddress();
+                const isProxyEnable: boolean = await this.checkEnableProxy();
+
                 const response = await fetch(url, {
                     method: 'HEAD',
-                    signal: controller.signal
+                    signal: controller.signal,
+                    // set proxy to check request if user set a proxy
+                    ...((isProxyEnable && proxyAddress !== null) && {
+                        dispatcher: new ProxyAgent(proxyAddress)
+                    })
                 });
 
                 clearTimeout(timeoutId);
                 const latency = Date.now() - startTime;
+
+                // console.log(response)
 
                 return {
                     success: response.ok || response.status === 200,
@@ -120,6 +193,7 @@ export class InternetConnectionChecker {
                     latency
                 };
             } catch (error: any) {
+                // console.log(error)
                 return {
                     success: false,
                     url,
@@ -444,7 +518,8 @@ export class InternetConnectionChecker {
             hasVPN: result.details.vpn.hasVPN,
             activeInterfaces: result.details.interfaces.interfaces,
             vpnInterfaces: result.details.vpn.interfaces.map(i => i.name),
-            dnsServers: this.dnsServers
+            dnsServers: this.dnsServers,
+            ...result
         };
     }
 }

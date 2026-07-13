@@ -105,7 +105,7 @@ function createWindow(): void {
     transparent: true, // 👈 false
     // backgroundColor: '#141414', // 👈 SOLID color, NOT transparent!
     alwaysOnTop: true,
-    // resizable: false,
+    resizable: false,
     fullscreenable: false,
     autoHideMenuBar: true,
     ...(process.platform === 'linux' ? { icon } : {}),
@@ -166,58 +166,39 @@ app.whenReady().then(() => {
     mainWindow.setIgnoreMouseEvents(false)
   })
   ipcMain.handle('delete-dns', (event, interfaceName: string) => { console.log(interfaceName) })
-  ipcMain.handle('proxy', () => {
-    return new Promise((resolve, reject) => {
-      execFile(
-        "reg",
-        [
-          "query",
-          "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings",
-          "/v",
-          "ProxyEnable",
-        ],
-        (err, stdout) => {
-          if (err) return reject(err);
-
-          let status: boolean = stdout.split(" ")[stdout.split(" ").length - 1].includes("0x1") ? true : false;
-          resolve(status);
-        }
-      );
-    });
+  ipcMain.handle('proxy', async () => {
+    return await checker.checkEnableProxy()
   })
   ipcMain.handle('dns', async () => {
-    const wifi = await getDns("Wi-Fi");
-    const ethernet = await getDns("vEthernet (Default Switch)");
+    const dns: any = [];
+    const interfaces: any[] = await checker.checkNetworkInterfaces().interfaces.map((inter) => inter.name);
+    console.log("interfaces: ", interfaces)
+    for (let i = 0; i < interfaces.length; i++) {
+      const element = interfaces[i];
+      dns.push({
+        name: element,
+        dns: await getDns(element)
+      })
+    }
 
-    return [
-      {
-        name: "wifi",
-        dns: wifi,
-      },
-      {
-        name: "ethernet",
-        dns: ethernet,
-      }
-    ];
+    return dns;
+
+    // const wifi = await getDns("Wi-Fi");
+    // const ethernet = await getDns("vEthernet (Default Switch)");
+
+    // return [
+    //   {
+    //     name: "wifi",
+    //     dns: wifi,
+    //   },
+    //   {
+    //     name: "ethernet",
+    //     dns: ethernet,
+    //   }
+    // ];
   })
-  ipcMain.handle('proxy-server', () => {
-    return new Promise((resolve, reject) => {
-      execFile(
-        "reg",
-        [
-          "query",
-          "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings",
-          "/v",
-          "ProxyServer",
-        ],
-        (err, stdout) => {
-          if (err) return reject(err);
-
-          let status: string = stdout.split(" ")[stdout.split(" ").length - 1];
-          resolve(status);
-        }
-      );
-    });
+  ipcMain.handle('proxy-server', async () => {
+    return await checker.getProxyAddress();
   })
   ipcMain.handle('vpn', () => {
     console.log(os.networkInterfaces())
