@@ -5,6 +5,12 @@ import icon from '../../resources/icon.png?asset'
 import { execFile } from 'child_process'
 import os from 'node:os';
 import { InternetConnectionChecker } from './../utils/internet';
+import log from 'electron-log/main';
+
+// Optional: initialize logger for renderer processes
+log.initialize();
+
+log.info('Application started');
 
 function getDns(interfaceName: string): Promise<string[]> {
   return new Promise((resolve, reject) => {
@@ -171,7 +177,8 @@ app.whenReady().then(() => {
   })
   ipcMain.handle('dns', async () => {
     const dns: any = [];
-    const interfaces: any[] = await checker.checkNetworkInterfaces().interfaces.map((inter) => inter.name);
+    const interrr = await checker.checkNetworkInterfaces();
+    const interfaces: any[] = interrr.interfaces;
     console.log("interfaces: ", interfaces)
     for (let i = 0; i < interfaces.length; i++) {
       const element = interfaces[i];

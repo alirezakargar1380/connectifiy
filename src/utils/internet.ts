@@ -7,9 +7,14 @@ import { promisify } from 'util';
 import { fetch, ProxyAgent } from 'undici';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { execFile } from 'child_process';
+import { gateway } from 'default-gateway';
+
+import log from 'electron-log/main';
+
 
 const execPromise = promisify(exec);
 const dnsResolvePromise = promisify(dns.resolve);
+const execAsync = promisify(exec);
 
 // Types
 export interface CheckResult {
@@ -39,14 +44,16 @@ export interface ConnectionInfo {
     isConnected: boolean;
     latency: number | null;
     hasVPN: boolean;
-    activeInterfaces: InterfaceInfo[];
+    // activeInterfaces: InterfaceInfo[];
+    activeInterfaces: string[];
     vpnInterfaces: string[];
     dnsServers: string[];
 }
 
 export interface NetworkInterfacesResult {
     success: boolean;
-    interfaces: InterfaceInfo[];
+    // interfaces: InterfaceInfo[];
+    interfaces: string[];
 }
 
 export interface VPNResult {
@@ -119,7 +126,7 @@ export class InternetConnectionChecker {
                     "ProxyEnable",
                 ],
                 (err, stdout) => {
-                    if (err) return reject(err);
+                    if (err) return resolve(false);
 
                     let status: boolean = stdout.split(" ")[stdout.split(" ").length - 1].includes("0x1") ? true : false;
                     resolve(status);
@@ -143,7 +150,7 @@ export class InternetConnectionChecker {
                     "ProxyServer",
                 ],
                 (err, stdout) => {
-                    if (err) return reject(err);
+                    if (err) return resolve(null);
 
                     let status: string = stdout.split(" ")[stdout.split(" ").length - 1];
                     // This regex matches IP:port patterns (both IPv4 and hostname:port)
@@ -169,10 +176,10 @@ export class InternetConnectionChecker {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
-                console.log('this is proxy server:', await this.getProxyAddress())
                 const proxyAddress: string | null = await this.getProxyAddress();
                 const isProxyEnable: boolean = await this.checkEnableProxy();
-
+                console.log('this is proxy server:', await this.getProxyAddress(), isProxyEnable)
+                log.info('this is proxy server:', await this.getProxyAddress(), isProxyEnable);
                 const response = await fetch(url, {
                     method: 'HEAD',
                     signal: controller.signal,
@@ -185,7 +192,7 @@ export class InternetConnectionChecker {
                 clearTimeout(timeoutId);
                 const latency = Date.now() - startTime;
 
-                // console.log(response)
+                log.info(response)
 
                 return {
                     success: response.ok || response.status === 200,
@@ -193,6 +200,7 @@ export class InternetConnectionChecker {
                     latency
                 };
             } catch (error: any) {
+                log.error(error)
                 // console.log(error)
                 return {
                     success: false,
@@ -307,33 +315,67 @@ export class InternetConnectionChecker {
     /**
      * Check network interfaces
      */
-    checkNetworkInterfaces(): NetworkInterfacesResult {
-        const networkInterfaces = os.networkInterfaces();
-        const activeInterfaces: InterfaceInfo[] = [];
+    // checkNetworkInterfaces(): NetworkInterfacesResult {
+    //     const networkInterfaces = os.networkInterfaces();
+    //     const activeInterfaces: InterfaceInfo[] = [];
 
-        for (const [name, iface] of Object.entries(networkInterfaces)) {
-            if (!iface) continue;
+    //     for (const [name, iface] of Object.entries(networkInterfaces)) {
+    //         if (!iface) continue;
 
-            for (const addr of iface) {
-                if (!addr.internal && addr.family === 'IPv4') {
-                    activeInterfaces.push({
-                        name,
-                        address: addr.address,
-                        netmask: addr.netmask || '',
-                        mac: addr.mac
-                    });
-                }
-            }
+    //         for (const addr of iface) {
+    //             console.log(addr)
+    //             if (!addr.internal && addr.family === 'IPv4') {
+    //                 activeInterfaces.push({
+    //                     name,
+    //                     address: addr.address,
+    //                     netmask: addr.netmask || '',
+    //                     mac: addr.mac
+    //                 });
+    //             }
+    //         }
+    //     }
+
+    //     if (this.verbose) {
+    //         console.log(`Found ${activeInterfaces.length} active interfaces`);
+    //     }
+
+    //     return {
+    //         success: activeInterfaces.length > 0,
+    //         interfaces: activeInterfaces
+    //     };
+    // }
+    async checkNetworkInterfaces(): Promise<NetworkInterfacesResult> {
+        if (os.platform() !== 'win32') {
+            // For non-Windows, fallback to a blocklist (see later)
+            return {
+                interfaces: [],
+                success: false
+            };
         }
 
-        if (this.verbose) {
-            console.log(`Found ${activeInterfaces.length} active interfaces`);
+        try {
+            // PowerShell command to get names of physical adapters
+            const { stdout } = await execPromise(
+                `powershell -Command "Get-NetAdapter -Physical | Select-Object -ExpandProperty Name"`
+            );
+            // Split lines and filter empty ones
+            const names = stdout.split('\n')
+                .map(line => line.trim())
+                .filter(name => name.length > 0);
+
+            return {
+                success: names.length > 0,
+                interfaces: names
+            };
+        } catch (error: any) {
+            console.warn('Failed to get physical adapters via PowerShell:', error.message);
+            return {
+                interfaces: [],
+                success: false
+            };
         }
 
-        return {
-            success: activeInterfaces.length > 0,
-            interfaces: activeInterfaces
-        };
+
     }
 
     /**
@@ -388,7 +430,7 @@ export class InternetConnectionChecker {
         };
 
         // Check network interfaces first
-        const interfaces = this.checkNetworkInterfaces();
+        const interfaces = await this.checkNetworkInterfaces();
         results.details.interfaces = interfaces;
 
         if (!interfaces.success) {
