@@ -72,6 +72,20 @@ function App(): React.JSX.Element {
 
   }, []);
 
+
+  const internetUsage = () => {
+    // Network Usage
+    window.api.getUsage().then((data) => {
+      setNetUsage(data)
+      console.log('network usage', data)
+    });
+  }
+
+  useEffect(() => {
+    const intervalId = setInterval(internetUsage, 3000);
+    return () => clearInterval(intervalId);
+  }, []);
+
   useEffect(() => {
     const getDns = async () => {
 
@@ -98,18 +112,13 @@ function App(): React.JSX.Element {
         setDns(data)
       });
 
-      // Network Usage
-      window.api.getUsage().then((data) => {
-        setNetUsage(data)
-        console.log('network usage', data)
-      });
     };
 
     // بار اول بلافاصله اجرا شود
     getDns();
 
     // هر ۳ ثانیه اجرا شود
-    const interval = setInterval(getDns, 1000);
+    const interval = setInterval(getDns, 3000);
 
     // پاک کردن تایمر
     return () => clearInterval(interval);

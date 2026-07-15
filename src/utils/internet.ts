@@ -46,6 +46,7 @@ export interface ConnectionInfo {
 export interface NetworkInterfacesResult {
     success: boolean;
     // interfaces: InterfaceInfo[];
+    checked: boolean;
     interfaces: string[];
 }
 
@@ -88,6 +89,7 @@ export class InternetConnectionChecker {
     private dnsServers: string[];
     private verbose: boolean;
     private proxy: string;
+    private interfaces: NetworkInterfacesResult;
 
     constructor(options: InternetCheckerOptions = {}) {
         this.timeout = options.timeout || 5000;
@@ -101,6 +103,14 @@ export class InternetConnectionChecker {
         this.dnsServers = options.dnsServers || ['8.8.8.8', '1.1.1.1', '9.9.9.9'];
         this.verbose = options.verbose || false;
         this.proxy = '';
+        this.interfaces = {
+            interfaces: [],
+            checked: false,
+            success: false
+        }
+
+        // Check network interfaces first
+        this.checkNetworkInterfaces();
     }
 
 
@@ -169,15 +179,16 @@ export class InternetConnectionChecker {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
+                const vpn = this.detectVPN();
+
                 const proxyAddress: string | null = await this.getProxyAddress();
                 const isProxyEnable: boolean = await this.checkEnableProxy();
-                console.log('this is proxy server:', await this.getProxyAddress(), isProxyEnable)
-                log.info('this is proxy server:', await this.getProxyAddress(), isProxyEnable);
+
                 const response = await fetch(url, {
                     method: 'HEAD',
                     signal: controller.signal,
                     // set proxy to check request if user set a proxy
-                    ...((isProxyEnable && proxyAddress !== null) && {
+                    ...((isProxyEnable && proxyAddress !== null && vpn.hasVPN === false) && {
                         dispatcher: new ProxyAgent(proxyAddress)
                     })
                 });
@@ -185,7 +196,7 @@ export class InternetConnectionChecker {
                 clearTimeout(timeoutId);
                 const latency = Date.now() - startTime;
 
-                log.info(response)
+                log.info('response', response)
 
                 return {
                     success: response.ok || response.status === 200,
@@ -193,7 +204,7 @@ export class InternetConnectionChecker {
                     latency
                 };
             } catch (error: any) {
-                log.error(error)
+                // log.error('error of req', error)
                 // console.log(error)
                 return {
                     success: false,
@@ -340,9 +351,10 @@ export class InternetConnectionChecker {
     async checkNetworkInterfaces(): Promise<NetworkInterfacesResult> {
         if (os.platform() !== 'win32') {
             // For non-Windows, fallback to a blocklist (see later)
-            return {
+            this.interfaces = {
                 interfaces: [],
-                success: false
+                success: false,
+                checked: true
             };
         }
 
@@ -356,17 +368,22 @@ export class InternetConnectionChecker {
                 .map(line => line.trim())
                 .filter(name => name.length > 0);
 
-            return {
+            this.interfaces = {
                 success: names.length > 0,
-                interfaces: names
+                interfaces: names,
+                checked: true
             };
+            return this.interfaces;
         } catch (error: any) {
             console.warn('Failed to get physical adapters via PowerShell:', error.message);
-            return {
+            this.interfaces = {
                 interfaces: [],
-                success: false
+                success: false,
+                checked: false
             };
+            return this.interfaces;
         }
+
 
 
     }
@@ -416,17 +433,17 @@ export class InternetConnectionChecker {
             methods: {},
             details: {
                 vpn: { hasVPN: false, interfaces: [] },
-                interfaces: { success: false, interfaces: [] },
+                interfaces: { success: false, interfaces: [], checked: false },
                 latency: null
             },
             duration: 0
         };
 
-        // Check network interfaces first
-        const interfaces = await this.checkNetworkInterfaces();
-        results.details.interfaces = interfaces;
+        if (!this.interfaces.checked)
+            await this.checkNetworkInterfaces()
 
-        if (!interfaces.success) {
+
+        if (!this.interfaces.success) {
             results.hasInternet = false;
             results.details.error = 'No active network interfaces found';
             results.duration = Date.now() - startTime;
@@ -519,7 +536,7 @@ export class InternetConnectionChecker {
                     methods: {},
                     details: {
                         vpn: { hasVPN: false, interfaces: [] },
-                        interfaces: { success: false, interfaces: [] },
+                        interfaces: { success: false, interfaces: [], checked: false },
                         latency: null,
                         error: error.message
                     },

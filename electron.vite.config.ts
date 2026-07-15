@@ -9,7 +9,7 @@ export default defineConfig({
   renderer: {
     server: {
       host: '127.0.0.1',
-      port: 5930,
+      port: 3430,
       strictPort: false // Allow fallback to another port if 5173 is in use
     },
     resolve: {

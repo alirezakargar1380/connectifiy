@@ -1,5 +1,5 @@
 appId: com.electron.app
-productName: connectivity
+productName: Connectivity
 directories:
   buildResources: build
 files:

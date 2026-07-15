@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import log from 'electron-log/main';
 
 const execPromise = promisify(exec);
 
@@ -86,11 +87,13 @@ class NetworkMonitor {
     private totalUsage: TotalUsage;
     private history: HistoryEntry[] = [];
     private historyFile: string;
+    private interfaceNames: string[];
     private isRunning: boolean = false;
     private updateInterval: NodeJS.Timeout | null = null;
     private saveInterval: NodeJS.Timeout | null = null;
     private processStats: ProcessStats = {};
     private previousStats: NetworkStats | null = null;
+    private method: 'none' | 1 | 2
 
     constructor() {
         this.totalUsage = {
@@ -100,13 +103,17 @@ class NetworkMonitor {
             startTime: new Date(),
             lastUpdate: Date.now()
         };
+        this.method = 'none';
+        this.interfaceNames = [];
         this.historyFile = path.join(__dirname, 'network-history.json');
 
         // Load history
         this.loadHistory();
 
         // Get initial interface stats
-        this.getNetworkInterfaces();
+        // this.getNetworkInterfaces();
+
+        this.getNetworkInterfaceNames();
     }
 
     private loadHistory(): void {
@@ -134,37 +141,68 @@ class NetworkMonitor {
         }
     }
 
-    private getNetworkInterfaces(): NetworkInterfaces {
-        const interfaces = os.networkInterfaces();
-        const activeInterfaces: NetworkInterfaces = {};
+    private async getNetworkInterfaceNames() {
+        const { stdout: interfaceStdout } = await execPromise(
+            `powershell -Command "Get-NetAdapter -Physical | Select-Object -ExpandProperty Name"`
+        );
 
-        for (const [name, iface] of Object.entries(interfaces)) {
-            if (!iface) continue;
-            for (const addr of iface) {
-                // Only track IPv4 addresses that are not internal
-                if (addr.family === 'IPv4' && !addr.internal) {
-                    console.log(addr)
-                    if (!activeInterfaces[name]) {
-                        activeInterfaces[name] = {
-                            addresses: [],
-                            bytesReceived: 0,
-                            bytesSent: 0,
-                            lastBytesReceived: 0,
-                            lastBytesSent: 0,
-                            speedDown: 0,
-                            speedUp: 0,
-                            rxBytes: 0,
-                            txBytes: 0
-                        };
-                    }
-                    activeInterfaces[name].addresses.push(addr.address);
-                }
-            }
+        const stats: NetworkStats = {
+            totalReceived: 0,
+            totalSent: 0,
+            interfaces: {}
+        };
+
+        // Parse all connected interfaces
+        // const lines = interfaceStdout.split('\n');
+        const lines = interfaceStdout.split(/\s+/);
+        const interfaceNames: string[] = [];
+
+
+        // console.log('lines', lines, interfaceStdout.split(/\s+/))
+
+
+
+        for (const line of lines) {
+            if (line.length !== 0)
+                interfaceNames.push(line);
         }
 
-        this.interfaces = activeInterfaces;
-        return activeInterfaces;
+        this.interfaceNames = interfaceNames;
     }
+
+    // private getNetworkInterfaces(): NetworkInterfaces {
+    //     const interfaces = os.networkInterfaces();
+    //     const activeInterfaces: NetworkInterfaces = {};
+
+    //     for (const [name, iface] of Object.entries(interfaces)) {
+    //         if (!iface) continue;
+    //         for (const addr of iface) {
+    //             // Only track IPv4 addresses that are not internal
+    //             if (addr.family === 'IPv4' && !addr.internal) {
+    //                 console.log(addr)
+    //                 if (!activeInterfaces[name]) {
+    //                     activeInterfaces[name] = {
+    //                         addresses: [],
+    //                         bytesReceived: 0,
+    //                         bytesSent: 0,
+    //                         lastBytesReceived: 0,
+    //                         lastBytesSent: 0,
+    //                         speedDown: 0,
+    //                         speedUp: 0,
+    //                         rxBytes: 0,
+    //                         txBytes: 0
+    //                     };
+    //                 }
+    //                 activeInterfaces[name].addresses.push(addr.address);
+    //             }
+    //         }
+    //     }
+
+    //     console.log('activeInterfaces', activeInterfaces)
+
+    //     this.interfaces = activeInterfaces;
+    //     return activeInterfaces;
+    // }
 
     // Get network statistics using OS-specific commands
     private async getNetworkStats(): Promise<NetworkStats> {
@@ -201,19 +239,19 @@ class NetworkMonitor {
     private async getWindowsNetworkStats(): Promise<NetworkStats> {
         try {
             // Better PowerShell command to get network statistics
-            const { stdout } = await execPromise(`
-                powershell -Command "
-                    Get-NetAdapter -Physical | 
-                    ForEach-Object {
-                        $stats = Get-NetAdapterStatistics -Name $_.Name
-                        [PSCustomObject]@{
-                            Name = $_.Name
-                            ReceivedBytes = $stats.ReceivedBytes
-                            SentBytes = $stats.SentBytes
-                        }
-                    } | ConvertTo-Json
-                "
-            `);
+            // const { stdout } = await execPromise(`
+            //     powershell -Command "
+            //         Get-NetAdapter -Physical | 
+            //         ForEach-Object {
+            //             $stats = Get-NetAdapterStatistics -Name $_.Name
+            //             [PSCustomObject]@{
+            //                 Name = $_.Name
+            //                 ReceivedBytes = $stats.ReceivedBytes
+            //                 SentBytes = $stats.SentBytes
+            //             }
+            //         } | ConvertTo-Json
+            //     "
+            // `);
 
             const stats: NetworkStats = {
                 totalReceived: 0,
@@ -221,40 +259,40 @@ class NetworkMonitor {
                 interfaces: {}
             };
 
-            try {
-                const data = JSON.parse(stdout);
-                console.log("data", data)
-                const items = Array.isArray(data) ? data : [data];
+            // try {
+            //     const data = JSON.parse(stdout);
+            //     console.log("data", data)
+            //     const items = Array.isArray(data) ? data : [data];
 
-                for (const item of items) {
-                    if (item && item.Name) {
-                        const received = parseInt(item.ReceivedBytes) || 0;
-                        const sent = parseInt(item.SentBytes) || 0;
+            //     for (const item of items) {
+            //         if (item && item.Name) {
+            //             const received = parseInt(item.ReceivedBytes) || 0;
+            //             const sent = parseInt(item.SentBytes) || 0;
 
-                        stats.interfaces[item.Name] = {
-                            received: received,
-                            sent: sent
-                        };
-                        stats.totalReceived += received;
-                        stats.totalSent += sent;
-                    }
-                }
-            } catch (parseError) {
-                // If JSON parsing fails, try parsing the raw output
-                const lines = stdout.split('\n').filter(line => line.trim());
-                for (const line of lines) {
-                    const parts = line.trim().split(/\s+/);
-                    if (parts.length >= 3) {
-                        const name = parts[0];
-                        const received = parseInt(parts[1]) || 0;
-                        const sent = parseInt(parts[2]) || 0;
+            //             stats.interfaces[item.Name] = {
+            //                 received: received,
+            //                 sent: sent
+            //             };
+            //             stats.totalReceived += received;
+            //             stats.totalSent += sent;
+            //         }
+            //     }
+            // } catch (parseError) {
+            //     // If JSON parsing fails, try parsing the raw output
+            //     const lines = stdout.split('\n').filter(line => line.trim());
+            //     for (const line of lines) {
+            //         const parts = line.trim().split(/\s+/);
+            //         if (parts.length >= 3) {
+            //             const name = parts[0];
+            //             const received = parseInt(parts[1]) || 0;
+            //             const sent = parseInt(parts[2]) || 0;
 
-                        stats.interfaces[name] = { received, sent };
-                        stats.totalReceived += received;
-                        stats.totalSent += sent;
-                    }
-                }
-            }
+            //             stats.interfaces[name] = { received, sent };
+            //             stats.totalReceived += received;
+            //             stats.totalSent += sent;
+            //         }
+            //     }
+            // }
 
             // If still no data, fallback to netstat
             if (stats.totalReceived === 0 && stats.totalSent === 0) {
@@ -272,9 +310,9 @@ class NetworkMonitor {
     private async getWindowsNetstatStats(): Promise<NetworkStats> {
         try {
             // Get ALL connected interfaces
-            const { stdout: interfaceStdout } = await execPromise(
-                'netsh interface show interface | findstr "Connected"'
-            );
+            // const { stdout: interfaceStdout } = await execPromise(
+            //     'netsh interface show interface | findstr "Connected"'
+            // );
 
             const stats: NetworkStats = {
                 totalReceived: 0,
@@ -283,159 +321,185 @@ class NetworkMonitor {
             };
 
             // Parse all connected interfaces
-            const lines = interfaceStdout.split('\n');
-            const interfaceNames: string[] = [];
+            // const lines = interfaceStdout.split('\n');
+            const interfaceNames: string[] = this.interfaceNames;
 
-            for (const line of lines) {
-                if (line.includes('Connected')) {
-                    const parts = line.trim().split(/\s+/);
-                    // Format: State   Type   Name
-                    // Example: "Connected    Dedicated    Wi-Fi"
-                    if (parts.length >= 3) {
-                        // Get the name (last part after State and Type)
-                        const name = parts.slice(2).join(' ');
-                        interfaceNames.push(name);
-                        // console.log(`📡 Found connected interface: "${name}"`);
-                    }
-                }
-            }
 
-            if (interfaceNames.length === 0) {
-                // console.warn('⚠️ No connected interfaces found');
-                return this.getWindowsNetstatFallback();
-            }
 
-            // Get stats for ALL connected interfaces using PowerShell
-            try {
-                // Build PowerShell command to get stats for all interfaces
-                const psCommand = interfaceNames.map(name =>
-                    `Get-NetAdapterStatistics -Name '${name}' | Select-Object Name, ReceivedBytes, SentBytes`
-                ).join('; ');
+            // for (const line of lines) {
+            // if (line.includes('Connected')) {
+            //     const parts = line.trim().split(/\s+/);
+            //     // Format: State   Type   Name
+            //     // Example: "Connected    Dedicated    Wi-Fi"
+            //     console.log('parts', parts)
+            //     if (parts.length >= 3) {
+            //         // Get the name (last part after State and Type)
+            //         const name = parts.slice(2).join(' ');
+            //         interfaceNames.push(name);
+            //         // console.log(`📡 Found connected interface: "${name}"`);
+            //     }
+            // }
+            // }
 
-                const { stdout } = await execPromise(
-                    `powershell -Command "${psCommand} | ConvertTo-Json"`
-                );
+            // if (interfaceNames.length === 0) {
+            //     console.warn('⚠️ No connected interfaces found');
+            //     return this.getWindowsNetstatFallback();
+            // }
 
-                // Parse JSON output
-                try {
-                    const data = JSON.parse(stdout);
-                    const items = Array.isArray(data) ? data : [data];
+            // console.log('getwidsnestat', interfaceNames)
 
-                    for (const item of items) {
-                        if (item && item.Name) {
-                            const received = parseInt(item.ReceivedBytes) || 0;
-                            const sent = parseInt(item.SentBytes) || 0;
+            // // Get stats for ALL connected interfaces using PowerShell
+            // try {
+            // Build PowerShell command to get stats for all interfaces
+            // const psCommand = interfaceNames.map(name =>
+            //     `Get-NetAdapterStatistics -Name '${name}' | Select-Object Name, ReceivedBytes, SentBytes`
+            // ).join('; ');
 
-                            stats.interfaces[item.Name] = { received, sent };
-                            stats.totalReceived += received;
-                            stats.totalSent += sent;
+            // console.log('psCommand', psCommand)
+            // const command =  `powershell -Command "${psCommand} | ConvertTo-Json"`;
+            // console.log('command', command)
+            // const { stdout } = await execPromise(command);
 
-                            console.log(`📊 ${item.Name}: RX=${received}, TX=${sent}`);
-                        }
-                    }
+            // console.log("stdout", stdout)
 
-                    if (stats.totalReceived > 0 || stats.totalSent > 0) {
-                        // console.log(`📊 Total: RX=${stats.totalReceived}, TX=${stats.totalSent}`);
-                        return stats;
-                    }
-                } catch (parseError) {
-                    // console.log('JSON parsing failed, trying text parsing...');
-                    // If JSON parsing fails, try parsing text output
-                    for (const name of interfaceNames) {
-                        const regex = new RegExp(`${name}[\\s\\S]*?ReceivedBytes[\\s]*:?\\s*(\\d+)[\\s\\S]*?SentBytes[\\s]*:?\\s*(\\d+)`, 'i');
-                        const match = stdout.match(regex);
-                        if (match) {
-                            const received = parseInt(match[1]) || 0;
-                            const sent = parseInt(match[2]) || 0;
-                            stats.interfaces[name] = { received, sent };
-                            stats.totalReceived += received;
-                            stats.totalSent += sent;
-                            console.log(`📊 ${name}: RX=${received}, TX=${sent}`);
-                        }
-                    }
+            //     // Parse JSON output
+            //     try {
+            //         const data = JSON.parse(stdout);
+            //         const items = Array.isArray(data) ? data : [data];
 
-                    if (stats.totalReceived > 0 || stats.totalSent > 0) {
-                        return stats;
-                    }
-                }
-            } catch (psError: any) {
-                // console.log('PowerShell Get-NetAdapterStatistics failed, trying netsh...');
-            }
+            //         for (const item of items) {
+            //             if (item && item.Name) {
+            //                 const received = parseInt(item.ReceivedBytes) || 0;
+            //                 const sent = parseInt(item.SentBytes) || 0;
 
-            // Alternative: Use netsh for ALL interfaces
-            try {
-                const { stdout } = await execPromise(
-                    'netsh interface ipv4 show subinterfaces'
-                );
+            //                 stats.interfaces[item.Name] = { received, sent };
+            //                 stats.totalReceived += received;
+            //                 stats.totalSent += sent;
 
-                const lines = stdout.split('\n');
-                for (const line of lines) {
-                    if (line.trim()) {
-                        const parts = line.trim().split(/\s+/);
-                        // Format: MTU  MediaSenseState  BytesIn  BytesOut  Interface
-                        if (parts.length >= 5) {
-                            const bytesIn = parseInt(parts[2]) || 0;
-                            const bytesOut = parseInt(parts[3]) || 0;
-                            const name = parts.slice(4).join(' ');
+            //                 console.log(`📊 ${item.Name}: RX=${received}, TX=${sent}`);
+            //             }
+            //         }
 
-                            // Check if this interface is in our connected list
-                            if (interfaceNames.some(iface => name.includes(iface) || iface.includes(name))) {
-                                stats.interfaces[name] = {
-                                    received: bytesIn,
-                                    sent: bytesOut
-                                };
-                                stats.totalReceived += bytesIn;
-                                stats.totalSent += bytesOut;
-                                // console.log(`📊 Netsh ${name}: RX=${bytesIn}, TX=${bytesOut}`);
-                            }
-                        }
-                    }
-                }
+            //         if (stats.totalReceived > 0 || stats.totalSent > 0) {
+            //             console.log(`📊 Total: RX=${stats.totalReceived}, TX=${stats.totalSent}`);
+            //             return stats;
+            //         }
+            //     } catch (parseError) {
+            //         console.log('JSON parsing failed, trying text parsing...');
+            //         // If JSON parsing fails, try parsing text output
+            //         for (const name of interfaceNames) {
+            //             const regex = new RegExp(`${name}[\\s\\S]*?ReceivedBytes[\\s]*:?\\s*(\\d+)[\\s\\S]*?SentBytes[\\s]*:?\\s*(\\d+)`, 'i');
+            //             const match = stdout.match(regex);
+            //             if (match) {
+            //                 const received = parseInt(match[1]) || 0;
+            //                 const sent = parseInt(match[2]) || 0;
+            //                 stats.interfaces[name] = { received, sent };
+            //                 stats.totalReceived += received;
+            //                 stats.totalSent += sent;
+            //                 console.log(`📊 ${name}: RX=${received}, TX=${sent}`);
+            //             }
+            //         }
 
-                if (stats.totalReceived > 0 || stats.totalSent > 0) {
-                    return stats;
-                }
-            } catch (netshError: any) {
-                // console.log('Netsh failed...');
-            }
+            //         if (stats.totalReceived > 0 || stats.totalSent > 0) {
+            //             return stats;
+            //         }
+            //     }
+            // } catch (psError: any) {
+            //     console.log('PowerShell Get-NetAdapterStatistics failed, trying netsh...');
+            // }
 
             // If we couldn't get specific interface stats, try getting all network adapters
-            try {
-                const { stdout } = await execPromise(
-                    `powershell -Command "Get-NetAdapter -Physical | ForEach-Object { $stats = Get-NetAdapterStatistics -Name $_.Name; [PSCustomObject]@{Name=$_.Name; ReceivedBytes=$stats.ReceivedBytes; SentBytes=$stats.SentBytes} } | ConvertTo-Json"`
-                );
-
+            if (this.method === 2 || this.method === 'none') {
+                log.info("+++++++++++++++++++++++++++++++++++++++++++ METHOD 2 ++++++++++++++++++++++++++++++++++")
                 try {
-                    const data = JSON.parse(stdout);
-                    const items = Array.isArray(data) ? data : [data];
+                    const { stdout } = await execPromise(
+                        `powershell -Command "Get-NetAdapter -Physical | ForEach-Object { $stats = Get-NetAdapterStatistics -Name $_.Name; [PSCustomObject]@{Name=$_.Name; ReceivedBytes=$stats.ReceivedBytes; SentBytes=$stats.SentBytes} } | ConvertTo-Json"`
+                    );
 
-                    for (const item of items) {
-                        if (item && item.Name) {
-                            const received = parseInt(item.ReceivedBytes) || 0;
-                            const sent = parseInt(item.SentBytes) || 0;
+                    try {
+                        const data = JSON.parse(stdout);
+                        const items = Array.isArray(data) ? data : [data];
 
-                            // Only add if it's one of our connected interfaces
-                            if (interfaceNames.some(name => item.Name.includes(name) || name.includes(item.Name))) {
-                                stats.interfaces[item.Name] = { received, sent };
-                                stats.totalReceived += received;
-                                stats.totalSent += sent;
-                                console.log(`📊 ${item.Name}: RX=${received}, TX=${sent}`);
+                        for (const item of items) {
+                            if (item && item.Name) {
+                                const received = parseInt(item.ReceivedBytes) || 0;
+                                const sent = parseInt(item.SentBytes) || 0;
+
+                                // Only add if it's one of our connected interfaces
+                                if (interfaceNames.some(name => item.Name.includes(name) || name.includes(item.Name))) {
+                                    stats.interfaces[item.Name] = { received, sent };
+                                    stats.totalReceived += received;
+                                    stats.totalSent += sent;
+                                    // console.log(`📊 ${item.Name}: RX=${received}, TX=${sent}`);
+                                }
+                            }
+                        }
+
+                        if (this.method === 'none')
+                            this.method = 2
+
+                        log.info('METHOD 2 DONE')
+
+                        if (stats.totalReceived > 0 || stats.totalSent > 0) {
+                            return stats;
+                        }
+                    } catch (parseError) {
+                        log.warn('Failed to parse all adapters output');
+                    }
+                } catch (allAdaptersError: any) {
+                    log.warn('Failed to get all adapters stats');
+                }
+            }
+
+
+            // Alternative: Use netsh for ALL interfaces
+            if (this.method === 1 || this.method === 'none') {
+                log.info("+++++++++++++++++++++++++++++++++++++++++++ METHOD 1 ++++++++++++++++++++++++++++++++++")
+                try {
+                    const { stdout } = await execPromise(
+                        'netsh interface ipv4 show subinterfaces'
+                    );
+
+                    const lines = stdout.split('\n');
+                    for (const line of lines) {
+                        if (line.trim()) {
+                            const parts = line.trim().split(/\s+/);
+                            // Format: MTU  MediaSenseState  BytesIn  BytesOut  Interface
+                            if (parts.length >= 5) {
+                                const bytesIn = parseInt(parts[2]) || 0;
+                                const bytesOut = parseInt(parts[3]) || 0;
+                                const name = parts.slice(4).join(' ');
+
+                                // Check if this interface is in our connected list
+                                if (interfaceNames.some(iface => name.includes(iface) || iface.includes(name))) {
+                                    log.info('im here')
+                                    stats.interfaces[name] = {
+                                        received: bytesIn,
+                                        sent: bytesOut
+                                    };
+                                    stats.totalReceived += bytesIn;
+                                    stats.totalSent += bytesOut;
+                                    // console.log(`📊 Netsh ${name}: RX=${bytesIn}, TX=${bytesOut}`);
+                                }
                             }
                         }
                     }
 
+                    if (this.method === 'none')
+                        this.method = 1
+
+                    log.info('METHOD 1 DONE')
+
                     if (stats.totalReceived > 0 || stats.totalSent > 0) {
                         return stats;
                     }
-                } catch (parseError) {
-                    console.log('Failed to parse all adapters output');
+                } catch (netshError: any) {
+                    console.log('Netsh failed...');
                 }
-            } catch (allAdaptersError: any) {
-                console.log('Failed to get all adapters stats');
             }
 
-            // Final fallback: Use netstat -e (shows combined stats)
-            console.warn('⚠️ Falling back to netstat -e (combined stats)');
+            // // Final fallback: Use netstat -e (shows combined stats)
+            log.warn('⚠️ Falling back to netstat -e (combined stats)');
             return this.getWindowsNetstatFallback();
 
         } catch (err: any) {
@@ -464,7 +528,7 @@ class NetworkMonitor {
                         stats.interfaces['Combined (netstat -e)'] = { received, sent };
                         stats.totalReceived = received;
                         stats.totalSent = sent;
-                        console.log(`📊 Combined stats: RX=${received}, TX=${sent}`);
+                        // console.log(`📊 Combined stats: RX=${received}, TX=${sent}`);
                     }
                 }
             }
@@ -1004,16 +1068,16 @@ class NetworkMonitor {
             // console.log('📊 Calculated speeds:', speeds);
 
             // Get process stats (can be slow, do every 10th update)
-            if (Math.floor(Date.now() / 1000) % 10 === 0) {
-                this.processStats = await this.getProcessNetworkUsage();
-            }
+            // if (Math.floor(Date.now() / 1000) % 10 === 0) {
+            //     this.processStats = await this.getProcessNetworkUsage();
+            // }
 
             // this.displayCurrentUsage(speeds);
 
             // Save to history every 5 minutes
             if (this.totalUsage.downloaded > 0 || this.totalUsage.uploaded > 0) {
                 // Only save if there's significant activity
-                this.saveSessionToHistory();
+                // this.saveSessionToHistory();
             }
         } catch (err: any) {
             console.error('Update error:', err.message);
@@ -1063,12 +1127,12 @@ class NetworkMonitor {
         // Update every second
         this.updateInterval = setInterval(() => {
             this.update();
-        }, 1000);
+        }, 2000);
 
         // Save history every minute
-        this.saveInterval = setInterval(() => {
-            this.saveSessionToHistory();
-        }, 60000);
+        // this.saveInterval = setInterval(() => {
+        //     this.saveSessionToHistory();
+        // }, 60000);
 
         // Handle Ctrl+C
         process.on('SIGINT', () => {

@@ -41,8 +41,8 @@ const monitor = new NetworkMonitor();
 monitor.start();
 
 const checker = new InternetConnectionChecker({
-  timeout: 4000,
-  verbose: true,
+  timeout: 5000,
+  verbose: false,
   testUrls: [
     'https://www.google.com',
     'https://www.cloudflare.com'
@@ -78,17 +78,6 @@ ipcMain.handle('is-connected', async () => {
   }
 });
 
-ipcMain.handle('start-monitoring', async (event, interval: number = 5000) => {
-  const stop = checker.monitorConnection(interval, (connected, details) => {
-    event.sender.send('internet-status', { connected, details });
-  });
-
-  // Store the stop function to use later
-  // You might want to store this in a Map with the sender ID
-  return { success: true };
-});
-
-
 // ipcMain.handle('get-connection-info', async () => {
 //     return await checker.getConnectionInfo();
 // });
@@ -98,7 +87,7 @@ let mainWindow: BrowserWindow
 function createWindow(): void {
   const { width: screenWidth } = screen.getPrimaryDisplay().workAreaSize;
   const windowWidth = 290;
-  const windowHeight = 700;
+  const windowHeight = 760;
 
   // Create the browser window.
   mainWindow = new BrowserWindow({
