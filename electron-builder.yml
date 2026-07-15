@@ -25,7 +25,7 @@ asarUnpack:
   - resources/**
 win:
   icon: build/icon_4.png # Explicitly point to your master icon
-  executableName: connectivity
+  executableName: Connectivity
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
