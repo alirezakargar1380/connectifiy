@@ -1127,7 +1127,7 @@ class NetworkMonitor {
         // Update every second
         this.updateInterval = setInterval(() => {
             this.update();
-        }, 2000);
+        }, 3000);
 
         // Save history every minute
         // this.saveInterval = setInterval(() => {

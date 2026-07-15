@@ -39,6 +39,8 @@ function App(): React.JSX.Element {
 
   const toggle = () => setMaximize(prev => prev === 'open' ? 'close' : 'open');
 
+  let counter = 0;
+
   const checkConnection = async (): Promise<void> => {
     try {
       console.log('calling check con func')
@@ -67,7 +69,7 @@ function App(): React.JSX.Element {
   useEffect(() => {
     checkConnection();
 
-    const intervalId = setInterval(checkConnection, 8000);
+    const intervalId = setInterval(checkConnection, 3000);
     return () => clearInterval(intervalId);
 
   }, []);
@@ -88,29 +90,36 @@ function App(): React.JSX.Element {
 
   useEffect(() => {
     const getDns = async () => {
+      counter++
+      if (counter % 3 === 0) {
+        // Proxy
+        window.api.getProxy().then((data) => {
+          // console.log("proxy: ", data)
+          if (data === true || data === false) setEnableProxy(data)
+          if (enableProxy === false && data === true) {
+            setNotif({
+              show: false,
+              text: 'PAY ATTENTION: you set a proxy on youre netword!'
+            })
+          }
+        });
+      }
 
-      // Proxy
-      window.api.getProxy().then((data) => {
-        // console.log("proxy: ", data)
-        if (data === true || data === false) setEnableProxy(data)
-        if (enableProxy === false && data === true) {
-          setNotif({
-            show: false,
-            text: 'PAY ATTENTION: you set a proxy on youre netword!'
-          })
-        }
-      });
 
-      // Proxy Server
-      window.api.getProxyServer().then((data) => {
-        setProxyServer(data)
-      })
+      if (counter % 5 === 0) {
+        // Proxy Server
+        window.api.getProxyServer().then((data) => {
+          setProxyServer(data)
+        })
+      }
 
-      // DNS
-      window.api.getDns().then((data) => {
-        // console.log(data)
-        setDns(data)
-      });
+      if (counter % 6 === 0) {
+        // DNS
+        window.api.getDns().then((data) => {
+          // console.log(data)
+          setDns(data)
+        });
+      }
 
     };
 
@@ -118,7 +127,7 @@ function App(): React.JSX.Element {
     getDns();
 
     // هر ۳ ثانیه اجرا شود
-    const interval = setInterval(getDns, 3000);
+    const interval = setInterval(getDns, 1000);
 
     // پاک کردن تایمر
     return () => clearInterval(interval);
