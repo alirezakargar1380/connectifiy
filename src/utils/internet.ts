@@ -1,20 +1,13 @@
-// internet-checker.ts
 import dns from 'dns';
 import { exec } from 'child_process';
 import os from 'os';
 import { promisify } from 'util';
-// import fetch from 'node-fetch';
 import { fetch, ProxyAgent } from 'undici';
-import { HttpsProxyAgent } from 'https-proxy-agent';
 import { execFile } from 'child_process';
-import { gateway } from 'default-gateway';
-
 import log from 'electron-log/main';
 
 
 const execPromise = promisify(exec);
-const dnsResolvePromise = promisify(dns.resolve);
-const execAsync = promisify(exec);
 
 // Types
 export interface CheckResult {

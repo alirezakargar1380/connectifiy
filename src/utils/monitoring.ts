@@ -8,6 +8,12 @@ import { promisify } from 'util';
 const execPromise = promisify(exec);
 
 // Type Definitions
+export interface NetworkUsage {
+    uploaded: string
+    downloaded: string
+    total: string
+}
+
 interface NetworkInterfaceInfo {
     addresses: string[];
     bytesReceived: number;
@@ -995,7 +1001,7 @@ class NetworkMonitor {
             // console.log('📊 Raw stats from system:', JSON.stringify(stats, null, 2));
 
             const speeds = this.calculateSpeeds(stats);
-            console.log('📊 Calculated speeds:', speeds);
+            // console.log('📊 Calculated speeds:', speeds);
 
             // Get process stats (can be slow, do every 10th update)
             if (Math.floor(Date.now() / 1000) % 10 === 0) {
@@ -1130,12 +1136,7 @@ class NetworkMonitor {
         // console.log('═'.repeat(60));
     }
 
-    public getReport(): {
-        uploaded: string
-        downloaded: string
-        total: string
-    } {
-
+    public getReport(): NetworkUsage {
         return {
             downloaded: this.formatBytes(this.totalUsage.downloaded),
             uploaded: this.formatBytes(this.totalUsage.uploaded),

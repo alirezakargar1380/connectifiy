@@ -9,6 +9,7 @@ import SvgColor from './components/svg-color';
 import computerIcon from '@renderer/assets/icons/computer.svg?url';
 import internetIcon from '@renderer/assets/icons/internet.svg?url';
 import vpnIcon from '@renderer/assets/icons/vpn.svg?url';
+import { NetworkUsage } from 'src/utils/monitoring';
 
 interface Notification {
   show: boolean
@@ -31,6 +32,7 @@ function App(): React.JSX.Element {
   const [dns, setDns] = useState<any[]>([]);
   const [result, setResult] = useState<ConnectionInfo>();
   const [notif, setNotif] = useState<Notification>();
+  const [netUsage, setNetUsage] = useState<NetworkUsage>({ downloaded: '0', total: '0', uploaded: '0' });
 
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -94,6 +96,12 @@ function App(): React.JSX.Element {
       window.api.getDns().then((data) => {
         // console.log(data)
         setDns(data)
+      });
+
+      // Network Usage
+      window.api.getUsage().then((data) => {
+        setNetUsage(data)
+        console.log('network usage', data)
       });
     };
 
@@ -242,8 +250,31 @@ function App(): React.JSX.Element {
           <Box sx={{ bgcolor: '#ffa600', p: 0.5, fontSize: 12, color: 'black' }}>{notif?.text}</Box>
         )}
 
-        {/* ==================== PROXY ==================== */}
+        {/* ==================== NETWORK USAGE ==================== */}
         <Box sx={{ bgcolor: '#fff', p: '16px', borderRadius: '16px' }}>
+          <Box sx={{ width: 1, textAlign: 'left', mb: 0.5, color: 'black', fontFamily: 'ur-medium', fontSize: '16px', display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box>Network Usage</Box>
+          </Box>
+
+          <Stack direction={'row'} spacing={1} sx={{ alignItems: 'center', mt: '16px', fontSize: 14 }}>
+            <Box sx={{ fontFamily: 'ur-medium', color: '#3d3d3db0' }}>Download:</Box>
+            <Box sx={{ fontFamily: 'ur-regular', color: '#3d3d3db0' }}>{netUsage.downloaded}</Box>
+          </Stack>
+
+          <Stack direction={'row'} spacing={1} sx={{ alignItems: 'center', fontSize: 14 }}>
+            <Box sx={{ fontFamily: 'ur-medium', color: '#3d3d3db0' }}>Upload:</Box>
+            <Box sx={{ fontFamily: 'ur-regular', color: '#3d3d3db0' }}>{netUsage.uploaded}</Box>
+          </Stack>
+
+          <Stack direction={'row'} spacing={1} sx={{ alignItems: 'center', fontSize: 14 }}>
+            <Box sx={{ fontFamily: 'ur-medium', color: '#3d3d3db0' }}>Total:</Box>
+            <Box sx={{ fontFamily: 'ur-regular', color: '#3d3d3db0' }}>{netUsage.total}</Box>
+          </Stack>
+
+        </Box>
+
+        {/* ==================== PROXY ==================== */}
+        <Box sx={{ bgcolor: '#fff', p: '16px', borderRadius: '16px', mt: '16px' }}>
           <Box sx={{ width: 1, textAlign: 'left', mb: 0.5, color: 'black', fontFamily: 'ur-medium', fontSize: '16px', display: 'flex', alignItems: 'center', gap: 1 }}>
             {/* <SvgColor src={computerIcon} sx={{ width: 40, height: 40, }} /> */}
             <img src={computerIcon} alt="computer" width={40} height={40} />

@@ -7,6 +7,7 @@ const api = {
   getProxyServer: () => ipcRenderer.invoke("proxy-server"),
   getVpn: () => ipcRenderer.invoke("vpn"),
   getDns: () => ipcRenderer.invoke("dns"),
+  getUsage: () => ipcRenderer.invoke("usage"),
   sendDeleteDns: (interfaceName: string) => ipcRenderer.invoke("delete-dns", interfaceName),
   isConnected: () => ipcRenderer.invoke("is-connected"),
   checkInternet: () => ipcRenderer.invoke('check-internet'),

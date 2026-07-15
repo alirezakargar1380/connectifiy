@@ -6,6 +6,7 @@ import { execFile } from 'child_process'
 import os from 'node:os';
 import { InternetConnectionChecker } from './../utils/internet';
 import log from 'electron-log/main';
+import NetworkMonitor from '../utils/monitoring'
 
 // Optional: initialize logger for renderer processes
 log.initialize();
@@ -35,6 +36,9 @@ function getDns(interfaceName: string): Promise<string[]> {
     );
   });
 }
+
+const monitor = new NetworkMonitor();
+monitor.start();
 
 const checker = new InternetConnectionChecker({
   timeout: 4000,
@@ -94,7 +98,7 @@ let mainWindow: BrowserWindow
 function createWindow(): void {
   const { width: screenWidth } = screen.getPrimaryDisplay().workAreaSize;
   const windowWidth = 290;
-  const windowHeight = 620;
+  const windowHeight = 700;
 
   // Create the browser window.
   mainWindow = new BrowserWindow({
@@ -175,11 +179,14 @@ app.whenReady().then(() => {
   ipcMain.handle('proxy', async () => {
     return await checker.checkEnableProxy()
   })
+  ipcMain.handle('usage', async () => {
+    const report = monitor.getReport();
+    return report
+  })
   ipcMain.handle('dns', async () => {
     const dns: any = [];
     const interrr = await checker.checkNetworkInterfaces();
     const interfaces: any[] = interrr.interfaces;
-    console.log("interfaces: ", interfaces)
     for (let i = 0; i < interfaces.length; i++) {
       const element = interfaces[i];
       dns.push({

@@ -1,4 +1,7 @@
 /// <reference types="vite/client" />
+
+import { NetworkUsage } from "src/utils/monitoring";
+
 export {};
 
 declare global {
@@ -8,6 +11,7 @@ declare global {
       getProxyServer(): Promise<string>;
       getVpn(): Promise;
       getDns(): Promise;
+      getUsage(): Promise;
       isConnected(): Promise;
       checkInternet(): Promise;
       sendDeleteDns(interfaceName: string): Promise;
